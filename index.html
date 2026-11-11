@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>兒童桌遊夥伴 - 隨機垃圾大挑戰！</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts - Fredoka & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', 'Fredoka', 'sans-serif'],
+          },
+          colors: {
+            general: '#64748b',   // 一般垃圾 (灰)
+            recycle: '#2563eb',   // 資源回收 (藍)
+            compost: '#eab308',   // 廚餘 (黃/棕)
+            hazard: '#dc2626',    // 特殊垃圾 (紅)
+          },
+          animation: {
+            'bounce-gentle': 'bounceGentle 2s infinite',
+            'pulse-fast': 'pulseFast 0.6s infinite',
+            'pop': 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+          },
+          keyframes: {
+            bounceGentle: {
+              '0%, 100%': { transform: 'translateY(-4%)' },
+              '50%': { transform: 'translateY(0)' },
+            },
+            pulseFast: {
+              '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+              '50%': { transform: 'scale(1.08)', opacity: '0.85' },
+            },
+            popIn: {
+              '0%': { opacity: '0', transform: 'scale(0.8) translateY(20px)' },
+              '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #e0f2fe 0%, #fef3c7 100%);
+      user-select: none;
+    }
+    .card-shadow {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+    .progress-ring__circle {
+      transition: stroke-dashoffset 0.1s linear;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-4 md:p-6 text-slate-800">
+
+  <!-- Header Section -->
+  <header class="w-full max-w-2xl text-center mb-4">
+    <div class="inline-flex items-center gap-2 bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm border border-white/60 mb-2">
+      <span class="text-2xl">♻️</span>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-emerald-600 tracking-wide">垃圾分類大挑戰！</h1>
+    </div>
+    <p class="text-xs md:text-sm text-slate-600 font-medium">桌遊最佳夥伴 • 抽卡、計時、考考你的環保智商！</p>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="w-full max-w-xl flex-1 flex flex-col items-center justify-center relative">
+
+    <!-- Control Panel: Timer Selector -->
+    <div id="timerControls" class="w-full bg-white/90 backdrop-blur rounded-2xl p-4 shadow-lg border border-white/80 mb-5 text-center">
+      <label class="block text-sm font-bold text-slate-700 mb-2">
+        <i class="fa-solid fa-stopwatch text-amber-500 mr-1"></i> 選擇倒數秒數：
+      </label>
+      <div class="grid grid-cols-4 gap-2 max-w-md mx-auto">
+        <button onclick="setTimer(5)" id="btn-timer-5" class="timer-btn font-bold py-2 px-3 rounded-xl border-2 border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition duration-150 text-sm md:text-base">
+          5 秒
+        </button>
+        <button onclick="setTimer(10)" id="btn-timer-10" class="timer-btn font-bold py-2 px-3 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition duration-150 text-sm md:text-base">
+          10 秒
+        </button>
+        <button onclick="setTimer(15)" id="btn-timer-15" class="timer-btn font-bold py-2 px-3 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition duration-150 text-sm md:text-base">
+          15 秒
+        </button>
+        <button onclick="setTimer(0)" id="btn-timer-0" class="timer-btn font-bold py-2 px-3 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition duration-150 text-sm md:text-base">
+          不計時
+        </button>
+      </div>
+    </div>
+
+    <!-- START / DRAW BUTTON (Initial State) -->
+    <div id="drawSection" class="w-full text-center py-6">
+      <button onclick="startDraw()" class="group relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 overflow-hidden text-lg font-black rounded-3xl group bg-gradient-to-br from-emerald-400 to-teal-600 group-hover:from-emerald-400 group-hover:to-teal-600 hover:text-white text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform active:scale-95 hover:-translate-y-1">
+        <span class="relative px-8 py-6 transition-all ease-in duration-75 rounded-3xl bg-opacity-0 flex items-center gap-3 text-2xl md:text-3xl tracking-wider">
+          <i class="fa-solid fa-trash-can text-3xl group-hover:rotate-12 transition-transform"></i>
+          抽垃圾卡片！
+        </span>
+      </button>
+    </div>
+
+    <!-- COUNTDOWN DISPLAY STATE -->
+    <div id="countdownSection" class="hidden w-full flex flex-col items-center justify-center py-6">
+      <div class="relative w-40 h-40 flex items-center justify-center">
+        <!-- SVG Ring -->
+        <svg class="w-full h-full" viewBox="0 0 100 100">
+          <circle class="text-slate-200" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50"/>
+          <circle id="progressCircle" class="text-emerald-500 progress-ring__circle" stroke-width="8" stroke-linecap="round" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" stroke-dasharray="251.2" stroke-dashoffset="0"/>
+        </svg>
+        <div id="timerText" class="absolute text-5xl font-extrabold text-emerald-600">
+          5
+        </div>
+      </div>
+      <p id="timerHint" class="mt-4 text-slate-600 font-bold text-lg animate-pulse">準備看好題目喔...</p>
+      <button onclick="skipTimer()" class="mt-3 text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded-full font-bold">
+        直接顯示項目 <i class="fa-solid fa-forward"></i>
+      </button>
+    </div>
+
+    <!-- ITEM REVEAL CARD STATE -->
+    <div id="cardSection" class="hidden w-full">
+      <div id="mainCard" class="bg-white rounded-3xl p-6 md:p-8 card-shadow border-4 border-white flex flex-col items-center text-center animate-pop">
+        
+        <!-- Icon Container -->
+        <div id="itemIconBg" class="w-28 h-28 md:w-36 md:h-36 rounded-full bg-slate-100 flex items-center justify-center text-6xl md:text-7xl mb-4 shadow-inner border-2 border-slate-100">
+          <span id="itemIcon">🍌</span>
+        </div>
+
+        <!-- Item Name -->
+        <span class="text-xs font-bold text-slate-400 tracking-widest uppercase mb-1">抽出的垃圾項目</span>
+        <h2 id="itemName" class="text-3xl md:text-4xl font-black text-slate-800 mb-6">香蕉皮</h2>
+
+        <!-- PHASE 2 REVEAL TRIGGER BUTTON -->
+        <button id="btnRevealAnswer" onclick="revealAnswer()" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-black text-lg shadow-lg hover:shadow-xl transition transform active:scale-98 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-eye"></i> 揭曉垃圾分類與來源
+        </button>
+
+        <!-- ANSWER & DETAIL SECTION (Hidden by default) -->
+        <div id="answerBlock" class="hidden w-full mt-4 pt-4 border-t-2 border-dashed border-slate-200">
+          
+          <!-- Classification Badge -->
+          <div class="mb-3">
+            <span id="categoryBadge" class="inline-block text-white text-lg md:text-xl font-extrabold px-6 py-2 rounded-full shadow-md bg-compost">
+              🍌 廚餘 (有機廢棄物)
+            </span>
+          </div>
+
+          <!-- Source & Description -->
+          <div class="bg-slate-50 rounded-2xl p-4 text-left border border-slate-200/80 mb-6">
+            <p class="text-xs font-bold text-slate-400 mb-1"><i class="fa-solid fa-circle-info text-blue-500"></i> 分類理由與說明：</p>
+            <p id="itemDetail" class="text-sm md:text-base text-slate-700 font-medium leading-relaxed">
+              水果皮容易腐爛分解，屬於養豬廚餘或堆肥廚餘，可以回收再利用成有機肥料喔！
+            </p>
+          </div>
+
+          <!-- NEXT ROUND BUTTON -->
+          <button onclick="resetToNextRound()" class="w-full py-3.5 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-lg shadow-lg hover:shadow-xl transition transform active:scale-95 flex items-center justify-center gap-2">
+            下一輪挑戰 <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- History Log Section -->
+  <footer class="w-full max-w-xl mt-6 bg-white/70 backdrop-blur rounded-2xl p-4 shadow-sm border border-white/60">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">
+        <i class="fa-solid fa-clock-rotate-left mr-1"></i> 本局抽卡紀錄 (<span id="historyCount">0</span>)
+      </span>
+      <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-red-500 font-bold transition">
+        清除紀錄
+      </button>
+    </div>
+    <div id="historyList" class="flex gap-2 overflow-x-auto pb-1 text-xs min-h-[36px] items-center">
+      <span class="text-slate-400 italic text-xs">尚未開始抽卡...</span>
+    </div>
+  </footer>
+
+  <!-- JavaScript Code -->
+  <script>
+    // 垃圾資料庫 (至少 30 種範例)
+    const garbageItems = [
+      // 廚餘 (compost)
+      { name: "香蕉皮 / 蘋果蒂", category: "compost", icon: "🍌", detail: "水果皮容易腐爛分解，屬於有機廚餘，可以做成有機肥料喔！" },
+      { name: "吃完的雞骨頭", category: "compost", icon: "🍗", detail: "剩菜剩飯與骨頭屬於廚餘，回收後可作為養豬飼料或堆肥。" },
+      { name: "過期變質的麵包", category: "compost", icon: "🍞", detail: "未經過包裝的食物廢棄物，直接丟入廚餘桶回收。" },
+      { name: "咖啡渣 / 茶葉渣", category: "compost", icon: "☕", detail: "植物性廢棄物是極佳的堆肥材料，記得瀝乾水份後丟廚餘桶。" },
+      { name: "高麗菜葉菜根", category: "compost", icon: "🥬", detail: "煮飯切掉的菜葉根部，屬於堆肥廚餘。" },
+      { name: "蛤蜊殼 / 蝦殼", category: "compost", icon: "🦪", detail: "海鮮硬殼屬於廚餘（部分縣市歸為廚餘或一般垃圾，通常丟廚餘/堆肥）。" },
+
+      // 資源回收 (recycle)
+      { name: "壓扁的乾淨寶特瓶", category: "recycle", icon: "🍾", detail: "寶特瓶是塑膠回收第一名！記得先沖洗乾淨、壓扁再回收。" },
+      { name: "洗淨的牛奶紙盒", category: "recycle", icon: "🥛", detail: "紙容器內層有塑膠膜，請清洗壓扁後放入「紙容器」回收類。" },
+      { name: "乾淨的紙箱", category: "recycle", icon: "📦", detail: "紙箱拆開拆平後屬於紙類回收，不可以弄髒或沾染油污喔。" },
+      { name: "鋁罐 / 鐵罐", category: "recycle", icon: "🥫", detail: "金屬飲料罐可以無限次熔融循環利用，請壓扁後回收。" },
+      { name: "乾淨的手搖飲塑膠杯", category: "recycle", icon: "🥤", detail: "撕下封膜、洗淨吸管殘液後，屬於塑膠回收類。" },
+      { name: "舊報紙與雜誌", category: "recycle", icon: "📰", detail: "乾淨的紙張、書籍都可以綁好交給紙類回收。" },
+      { name: "玻璃飲料瓶", category: "recycle", icon: "🍾", detail: "玻璃瓶請小心不要弄破，洗淨後依顏色（透明、棕色、綠色）回收。" },
+      { name: "乾淨的保麗龍盒", category: "recycle", icon: "📦", detail: "沒有沾染油污的乾淨保麗龍可以專門回收。" },
+
+      // 一般垃圾 (general)
+      { name: "髒污嚴重的便當盒", category: "general", icon: "🍱", detail: "上面沾滿油污且無法洗乾淨的紙盒，無法再利用，要丟一般垃圾！" },
+      { name: "沾有湯汁的塑膠吸管", category: "general", icon: "🥤", detail: "使用過的塑膠吸管太細小且帶有髒污，屬於不可回收的一般垃圾。" },
+      { name: "用過的衛生紙", category: "general", icon: "🧻", detail: "衛生紙水解或帶有體液污漬，無法循環回收，必須丟一般垃圾。" },
+      { name: "破損的陶瓷碗盤", category: "general", icon: "🍽️", detail: "陶瓷不屬於玻璃！它是高溫燒製品無法再熔融，請包好丟一般垃圾。" },
+      { name: "髒污的橡皮筋與膠帶", category: "general", icon: "🩹", detail: "複合材質與黏膠無法分離回收，直接丟一般垃圾。" },
+      { name: "洋洋洋芋片複合塑膠袋", category: "general", icon: "🍿", detail: "內層有鍍鋁的餅乾袋屬於複合材質，目前大部分視為一般垃圾。" },
+      { name: "破掉的洋傘 / 塑膠雨衣", category: "general", icon: "☂️", detail: "塑膠雨衣與壞掉的雨傘材質複雜，直接當一般垃圾處理。" },
+      { name: "安全帽", category: "general", icon: "🪖", detail: "內襯與塑膠外殼複合且難以拆解，屬於大型一般垃圾。" },
+
+      // 特殊垃圾 / 有毒危險 (hazard)
+      { name: "廢棄的三號乾電池", category: "hazard", icon: "🔋", detail: "含有重金屬強酸強鹼！絕對不能丟一般垃圾，要送到超商或專門回收點！" },
+      { name: "日光燈管 / 省電燈泡", category: "hazard", icon: "💡", detail: "燈管內含有水銀蒸汽，若打破非常危險，請用原包裝套好專門回收。" },
+      { name: "過期藥品 / 藥丸", category: "hazard", icon: "💊", detail: "藥丸不可隨意丟棄或沖馬桶！請交給藥局藥品回收桶或按指示處理。" },
+      { name: "廢棄的水銀體溫計", category: "hazard", icon: "🌡️", detail: "含有劇毒水銀！必須小心保持完整，密封後交給清潔隊資源回收車。" },
+      { name: "瓦斯罐 / 噴霧罐", category: "hazard", icon: "💨", detail: "瓶內有高壓易燃氣體！必須在通風處確認排空後，才能專門回收，否則會爆炸！" },
+      { name: "舊手機 / 廢行動電源", category: "hazard", icon: "📱", detail: "鋰電池受到擠壓會起火爆炸！必須單獨交給廢電子產品回收站。" }
+    ];
+
+    // 分類屬性設定 (顏色與名稱)
+    const categoryConfigs = {
+      general: {
+        name: "一般垃圾",
+        bgClass: "bg-slate-600",
+        borderClass: "border-slate-500",
+        badge: "🗑️ 一般垃圾 (焚化或掩埋)",
+        color: "#64748b"
+      },
+      recycle: {
+        name: "資源回收",
+        bgClass: "bg-blue-600",
+        borderClass: "border-blue-500",
+        badge: "♻️ 資源回收 (可循環再利用)",
+        color: "#2563eb"
+      },
+      compost: {
+        name: "廚餘",
+        bgClass: "bg-amber-500",
+        borderClass: "border-amber-500",
+        badge: "🍌 廚餘 (養豬或堆肥)",
+        color: "#eab308"
+      },
+      hazard: {
+        name: "特殊 / 有毒危險",
+        bgClass: "bg-red-600",
+        borderClass: "border-red-500",
+        badge: "⚠️ 特殊危險垃圾 (需專門處理)",
+        color: "#dc2626"
+      }
+    };
+
+    // 全局狀態
+    let selectedTimerDuration = 5; // 預設 5 秒
+    let timerInterval = null;
+    let currentItem = null;
+    let historyList = [];
+
+    // 初始化頁面
+    window.onload = function() {
+      setTimer(5);
+    };
+
+    // 設定計時器秒數按鈕切換
+    function setTimer(seconds) {
+      selectedTimerDuration = seconds;
+      
+      const btnIds = [5, 10, 15, 0];
+      btnIds.forEach(sec => {
+        const btn = document.getElementById(`btn-timer-${sec}`);
+        if(sec === seconds) {
+          btn.className = "timer-btn font-bold py-2 px-3 rounded-xl border-2 border-emerald-500 bg-emerald-500 text-white shadow-md transition duration-150 text-sm md:text-base";
+        } else {
+          btn.className = "timer-btn font-bold py-2 px-3 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition duration-150 text-sm md:text-base";
+        }
+      });
+    }
+
+    // 開始抽取垃圾
+    function startDraw() {
+      // 隨機選一個品項
+      const randomIndex = Math.floor(Math.random() * garbageItems.length);
+      currentItem = garbageItems[randomIndex];
+
+      // 隱藏抽卡按鈕
+      document.getElementById('drawSection').classList.add('hidden');
+      document.getElementById('timerControls').classList.add('opacity-50', 'pointer-events-none');
+
+      if (selectedTimerDuration > 0) {
+        // 開啟倒數計時畫面
+        startCountdown(selectedTimerDuration);
+      } else {
+        // 不計時，直接顯示卡片
+        showCardPhase1();
+      }
+    }
+
+    // 啟動倒數計時動畫
+    function startCountdown(duration) {
+      const countdownSection = document.getElementById('countdownSection');
+      const timerText = document.getElementById('timerText');
+      const progressCircle = document.getElementById('progressCircle');
+      const timerHint = document.getElementById('timerHint');
+
+      countdownSection.classList.remove('hidden');
+
+      let timeLeft = duration;
+      const totalTime = duration;
+      const circleLength = 251.2; // 2 * PI * 40
+
+      timerText.innerText = timeLeft;
+      progressCircle.style.strokeDashoffset = '0';
+      timerText.classList.remove('animate-pulse-fast', 'text-red-500');
+      timerText.classList.add('text-emerald-600');
+
+      timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          countdownSection.classList.add('hidden');
+          showCardPhase1();
+          return;
+        }
+
+        // 更新文字
+        const displaySec = Math.ceil(timeLeft);
+        timerText.innerText = displaySec;
+
+        // 最後 2 秒變紅色與快閃
+        if (timeLeft <= 2) {
+          timerText.classList.remove('text-emerald-600');
+          timerText.classList.add('text-red-500', 'animate-pulse-fast');
+          timerHint.innerText = "快要揭曉囉...";
+        } else {
+          timerHint.innerText = "準備看好題目喔...";
+        }
+
+        // 更新圓圈進度條
+        const offset = circleLength - (timeLeft / totalTime) * circleLength;
+        progressCircle.style.strokeDashoffset = offset;
+
+      }, 100);
+    }
+
+    // 跳過計時
+    function skipTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      document.getElementById('countdownSection').classList.add('hidden');
+      showCardPhase1();
+    }
+
+    // 階段 1: 僅顯示項目名稱與圖示 (隱藏答案)
+    function showCardPhase1() {
+      const cardSection = document.getElementById('cardSection');
+      const itemIcon = document.getElementById('itemIcon');
+      const itemName = document.getElementById('itemName');
+      const answerBlock = document.getElementById('answerBlock');
+      const btnRevealAnswer = document.getElementById('btnRevealAnswer');
+      const itemIconBg = document.getElementById('itemIconBg');
+
+      // 設定資料
+      itemIcon.innerText = currentItem.icon;
+      itemName.innerText = currentItem.name;
+
+      // 預設重置外觀
+      itemIconBg.className = "w-28 h-28 md:w-36 md:h-36 rounded-full bg-slate-100 flex items-center justify-center text-6xl md:text-7xl mb-4 shadow-inner border-4 border-slate-200 transition-all duration-300";
+
+      // 顯示 Phase 1, 隱藏 Phase 2
+      answerBlock.classList.add('hidden');
+      btnRevealAnswer.classList.remove('hidden');
+
+      // 顯示卡片面板
+      cardSection.classList.remove('hidden');
+    }
+
+    // 階段 2: 揭曉分類與來源
+    function revealAnswer() {
+      const answerBlock = document.getElementById('answerBlock');
+      const btnRevealAnswer = document.getElementById('btnRevealAnswer');
+      const categoryBadge = document.getElementById('categoryBadge');
+      const itemDetail = document.getElementById('itemDetail');
+      const itemIconBg = document.getElementById('itemIconBg');
+
+      const config = categoryConfigs[currentItem.category];
+
+      // 設定答案區塊內容
+      categoryBadge.innerText = config.badge;
+      categoryBadge.className = `inline-block text-white text-base md:text-xl font-extrabold px-6 py-2.5 rounded-full shadow-md ${config.bgClass} transform animate-bounce-gentle`;
+      itemDetail.innerText = currentItem.detail;
+
+      // 圖示背景換色
+      itemIconBg.className = `w-28 h-28 md:w-36 md:h-36 rounded-full flex items-center justify-center text-6xl md:text-7xl mb-4 shadow-lg border-4 ${config.borderClass} transition-all duration-300 scale-105`;
+
+      // 切換按鈕與內容
+      btnRevealAnswer.classList.add('hidden');
+      answerBlock.classList.remove('hidden');
+
+      // 加入紀錄
+      addHistory(currentItem);
+    }
+
+    // 重置為下一輪
+    function resetToNextRound() {
+      document.getElementById('cardSection').classList.add('hidden');
+      document.getElementById('drawSection').classList.remove('hidden');
+      document.getElementById('timerControls').classList.remove('opacity-50', 'pointer-events-none');
+    }
+
+    // 新增歷史紀錄
+    function addHistory(item) {
+      historyList.unshift(item);
+      updateHistoryUI();
+    }
+
+    // 更新歷史紀錄 UI
+    function updateHistoryUI() {
+      const historyListEl = document.getElementById('historyList');
+      const historyCountEl = document.getElementById('historyCount');
+
+      historyCountEl.innerText = historyList.length;
+
+      if (historyList.length === 0) {
+        historyListEl.innerHTML = `<span class="text-slate-400 italic text-xs">尚未開始抽卡...</span>`;
+        return;
+      }
+
+      historyListEl.innerHTML = historyList.map((item) => {
+        const config = categoryConfigs[item.category];
+        return `
+          <div class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-slate-200 shadow-sm text-xs font-bold">
+            <span>${item.icon}</span>
+            <span class="text-slate-700">${item.name}</span>
+            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${config.color}"></span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 清除紀錄
+    function clearHistory() {
+      historyList = [];
+      updateHistoryUI();
+    }
+  </script>
+</body>
+</html>
